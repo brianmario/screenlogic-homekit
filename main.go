@@ -39,4 +39,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// I only have one pool controller.
+	// I'm not sure where a list of them is returned, or where you'd get the
+	// index of a controller, but I can assume 0 here.
+	var controllerIdx uint32 = 0
+
+	// This will eventually come from HomeKit
+	var setTemp uint32 = 80
+
+	poolID := screenlogic.Pool
+
+	err = gateway.SetTemperature(controllerIdx, poolID, setTemp)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	heatMode := screenlogic.HeatModeOff
+
+	err = gateway.SetHeatMode(controllerIdx, poolID, heatMode)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -175,6 +175,10 @@ The `Circuit`, `Color` and `Pump` types referenced here are described just below
 
 This packet consists of a header only, who's `Code` field is `13`.
 
-### Bad Parameter
+### Malformed Packet
 
 This packet consists of a header only, who's `Code` field is `31`.
+
+This will be returned if the gateway doesn't recognize any part of an otherwise perfectly
+formatted packet. For example, if you specify a non-existant value (like say, a body of water
+index that doesn't exist), this will be returned.

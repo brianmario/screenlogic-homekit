@@ -20,11 +20,15 @@ const (
 	ControllerConfigurationResponsePacketCode        = ControllerConfigurationPacketCode + 1
 	PoolStatusPacketCode                             = 12526
 	PoolStatusResponsePacketCode                     = PoolStatusPacketCode + 1
+	SetHeatPointPacketCode                           = 12528
+	SetHeatPointResponsePacketCode                   = SetHeatPointPacketCode + 1
+	SetHeatModePacketCode                            = 12538
+	SetHeatModeResponsePacketCode                    = SetHeatModePacketCode + 1
 )
 
 var (
-	UnexpectedPacketTypeErr = errors.New("unexpected packet type")
-	LoginFailedErr          = errors.New("login failed")
+	MalformedPacketErr = errors.New("malformed packet")
+	LoginFailedErr     = errors.New("login failed")
 )
 
 // WriteablePacket - an interface to give the PacketWriter control over how to write
@@ -125,7 +129,7 @@ type ChallengePacketResponse struct {
 
 func (chr *ChallengePacketResponse) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != ChallengePacketResponseCode {
-		return UnexpectedPacketTypeErr
+		return MalformedPacketErr
 	}
 
 	decoder := NewDecoder(buf)
@@ -203,7 +207,7 @@ func (lrm *LoginResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) 
 	}
 
 	if header.TypeID != LoginResponsePacketCode {
-		return UnexpectedPacketTypeErr
+		return MalformedPacketErr
 	}
 
 	// TODO: technically there are 16 bytes of something in this packet body
@@ -224,7 +228,7 @@ type VersionResponsePacket struct {
 
 func (vm *VersionResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != VersionResponsePacketCode {
-		return UnexpectedPacketTypeErr
+		return MalformedPacketErr
 	}
 
 	var err error
@@ -351,7 +355,7 @@ type Pump struct {
 
 func (vm *ControllerConfigurationResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != ControllerConfigurationResponsePacketCode {
-		return UnexpectedPacketTypeErr
+		return MalformedPacketErr
 	}
 
 	var err error
@@ -606,7 +610,7 @@ type PoolCircuit struct {
 
 func (psrp *PoolStatusResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != PoolStatusResponsePacketCode {
-		return UnexpectedPacketTypeErr
+		return MalformedPacketErr
 	}
 
 	var err error
@@ -792,6 +796,88 @@ func (psrp *PoolStatusResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+type SetHeatPointPacket struct {
+	ControllerIdx uint32
+	BodyType      uint32
+	Temperature   uint32
+}
+
+func (shp *SetHeatPointPacket) Encode() (uint16, *bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+
+	encoder := NewEncoder(buf)
+
+	err := encoder.WriteUint32(shp.ControllerIdx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	err = encoder.WriteUint32(shp.BodyType)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	err = encoder.WriteUint32(shp.Temperature)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return SetHeatPointPacketCode, buf, nil
+}
+
+type SetHeatPointResponsePacket struct{}
+
+func (shpr *SetHeatPointResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
+	if header.TypeID != SetHeatPointResponsePacketCode {
+		return MalformedPacketErr
+	}
+
+	// this presumably has no fields?
+
+	return nil
+}
+
+type SetHeatModePacket struct {
+	ControllerIdx uint32
+	BodyType      uint32
+	Mode          uint32
+}
+
+func (shm *SetHeatModePacket) Encode() (uint16, *bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+
+	encoder := NewEncoder(buf)
+
+	err := encoder.WriteUint32(shm.ControllerIdx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	err = encoder.WriteUint32(shm.BodyType)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	err = encoder.WriteUint32(shm.Mode)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return SetHeatModePacketCode, buf, nil
+}
+
+type SetHeatModeResponsePacket struct{}
+
+func (shmr *SetHeatModeResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
+	if header.TypeID != SetHeatModeResponsePacketCode {
+		return MalformedPacketErr
+	}
+
+	// this presumably has no fields?
 
 	return nil
 }

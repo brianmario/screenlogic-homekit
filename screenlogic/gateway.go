@@ -186,6 +186,67 @@ func (g *Gateway) PoolStatus() (*PoolStatus, error) {
 	return resp, nil
 }
 
+type BodyOfWater uint32
+
+const (
+	Pool BodyOfWater = iota
+	Spa
+)
+
+func (g *Gateway) SetTemperature(controllerIdx uint32, bodyType BodyOfWater, temperature uint32) error {
+	var req protocol.SetHeatPointPacket
+
+	req.ControllerIdx = controllerIdx
+	req.BodyType = uint32(bodyType)
+	req.Temperature = temperature
+
+	err := g.packetWriter.WritePacket(&req)
+	if err != nil {
+		return err
+	}
+
+	var resp protocol.SetHeatPointResponsePacket
+
+	err = g.packetReader.ReadPacket(&resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type HeatMode uint32
+
+const (
+	HeatModeOff HeatMode = iota
+	HeatModeSolarOnly
+	HeatModeSolarPreferred
+	HeatModeOn
+	HeatModeUnchanged
+)
+
+func (g *Gateway) SetHeatMode(controllerIdx uint32, bodyType BodyOfWater, mode HeatMode) error {
+	var req protocol.SetHeatModePacket
+
+	req.ControllerIdx = controllerIdx
+	req.BodyType = uint32(bodyType)
+	req.Mode = uint32(mode)
+
+	err := g.packetWriter.WritePacket(&req)
+	if err != nil {
+		return err
+	}
+
+	var resp protocol.SetHeatModeResponsePacket
+
+	err = g.packetReader.ReadPacket(&resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (g *Gateway) Close() {
 	g.client.Close()
 }
