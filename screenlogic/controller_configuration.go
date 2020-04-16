@@ -10,7 +10,7 @@ func (cc *ControllerConfiguration) HasSolar() bool {
 	return (cc.EquipmentFlags & 0x1) != 0
 }
 
-func (cc *ControllerConfiguration) HasSolarAsHeatpump() bool {
+func (cc *ControllerConfiguration) HasSolarAsHeatPump() bool {
 	return (cc.EquipmentFlags & 0x2) != 0
 }
 

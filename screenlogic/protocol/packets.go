@@ -312,20 +312,20 @@ type SetPoint struct {
 const maxPumpCount uint8 = 8
 
 type ControllerConfigurationResponsePacket struct {
-	ControllerID       uint32
-	PoolSetPoint       SetPoint
-	SpaSetPoint        SetPoint
-	IsCelcius          bool
-	ControllerType     uint8
-	HardwareType       uint8
-	ControllerBuffer   uint8
-	EquipmentFlags     uint32
-	DefaultCircuitName string
-	Circuits           []ControllerCircuit
-	Colors             []Color
-	Pumps              [maxPumpCount]Pump
-	InterfaceTabFlags  uint32
-	ShowAlarms         bool
+	ControllerID             uint32
+	AllowedPoolSetPointRange SetPoint
+	AllowedSpaSetPointRange  SetPoint
+	IsCelcius                bool
+	ControllerType           uint8
+	HardwareType             uint8
+	ControllerBuffer         uint8
+	EquipmentFlags           uint32
+	DefaultCircuitName       string
+	Circuits                 []ControllerCircuit
+	Colors                   []Color
+	Pumps                    [maxPumpCount]Pump
+	InterfaceTabFlags        uint32
+	ShowAlarms               bool
 }
 
 type ControllerCircuit struct {
@@ -367,22 +367,22 @@ func (vm *ControllerConfigurationResponsePacket) Decode(header *PacketHeader, bu
 		return err
 	}
 
-	vm.PoolSetPoint.Min, err = decoder.ReadUint8()
+	vm.AllowedPoolSetPointRange.Min, err = decoder.ReadUint8()
 	if err != nil {
 		return err
 	}
 
-	vm.PoolSetPoint.Max, err = decoder.ReadUint8()
+	vm.AllowedPoolSetPointRange.Max, err = decoder.ReadUint8()
 	if err != nil {
 		return err
 	}
 
-	vm.SpaSetPoint.Min, err = decoder.ReadUint8()
+	vm.AllowedSpaSetPointRange.Min, err = decoder.ReadUint8()
 	if err != nil {
 		return err
 	}
 
-	vm.SpaSetPoint.Max, err = decoder.ReadUint8()
+	vm.AllowedSpaSetPointRange.Max, err = decoder.ReadUint8()
 	if err != nil {
 		return err
 	}
@@ -569,7 +569,7 @@ func (psp *PoolStatusPacket) Encode() (uint16, *bytes.Buffer, error) {
 }
 
 type PoolStatusResponsePacket struct {
-	OK           uint32
+	OK           uint32 // TODO: figure out a better name for this
 	FreezeMode   uint8
 	Remotes      uint8
 	PoolDelay    uint8
@@ -577,7 +577,7 @@ type PoolStatusResponsePacket struct {
 	CleanerDelay uint8
 	WhoKnows     [3]byte
 	AirTemp      uint32
-	Bodies       []Body
+	Bodies       []BodyOfWater
 	Circuits     []PoolCircuit
 	Chemistry    struct {
 		PH           float32
@@ -590,7 +590,7 @@ type PoolStatusResponsePacket struct {
 	}
 }
 
-type Body struct {
+type BodyOfWater struct {
 	Type         uint32 // other libraries appear to force this to be with in 0 or 1
 	CurrentTemp  uint32
 	HeaterStatus uint32
@@ -672,7 +672,7 @@ func (psrp *PoolStatusResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	// }
 
 	if bodyCount > 0 {
-		psrp.Bodies = make([]Body, bodyCount)
+		psrp.Bodies = make([]BodyOfWater, bodyCount)
 
 		var i uint32 = 0
 		for ; i < bodyCount; i++ {

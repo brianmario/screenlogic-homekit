@@ -189,8 +189,8 @@ func (g *Gateway) PoolStatus() (*PoolStatus, error) {
 type BodyOfWater uint32
 
 const (
-	Pool BodyOfWater = iota
-	Spa
+	BodyOfWaterPool BodyOfWater = iota
+	BodyOfWaterSpa
 )
 
 func (g *Gateway) SetTemperature(controllerIdx uint32, bodyType BodyOfWater, temperature uint32) error {
