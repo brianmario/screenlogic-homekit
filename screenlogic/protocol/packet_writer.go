@@ -22,7 +22,7 @@ func NewPacketWriter(w io.Writer, startingSequence uint16) *PacketWriter {
 }
 
 func (pw *PacketWriter) WritePacket(p WriteablePacket) error {
-	code, dataBuf, err := p.Encode()
+	dataBuf, err := p.Encode()
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (pw *PacketWriter) WritePacket(p WriteablePacket) error {
 	var tmpHeader PacketHeader
 	var packetBuf bytes.Buffer
 
-	tmpHeader.TypeID = code
+	tmpHeader.TypeID = p.TypeCode()
 
 	// Set this packet's length to the *actual* amount of data in its buffer.
 	//

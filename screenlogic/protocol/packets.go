@@ -16,6 +16,7 @@ const (
 	BadParameterCode                                 = 31
 	VersionPacketCode                                = 8120
 	VersionResponsePacketCode                        = VersionPacketCode + 1
+	WeatherForcastChangedCode                        = 9806
 	ControllerConfigurationPacketCode                = 12532
 	ControllerConfigurationResponsePacketCode        = ControllerConfigurationPacketCode + 1
 	PoolStatusPacketCode                             = 12526
@@ -31,16 +32,24 @@ var (
 	LoginFailedErr     = errors.New("login failed")
 )
 
+type IdentifiablePacket interface {
+	TypeCode() uint16
+}
+
 // WriteablePacket - an interface to give the PacketWriter control over how to write
 // arbitrary packet packets to an io.Writer.
 type WriteablePacket interface {
+	IdentifiablePacket
+
 	// Encode - should encode this packet's frame data only.
-	Encode() (PacketCode uint16, PacketData *bytes.Buffer, err error)
+	Encode() (PacketData *bytes.Buffer, err error)
 }
 
 // ReadablePacket - an interface to give the PacketReader control over how arbitrary packet
 // packets are read from an io.Reader.
 type ReadablePacket interface {
+	IdentifiablePacket
+
 	Decode(Header *PacketHeader, PacketData *bytes.Buffer) error
 }
 
@@ -119,12 +128,20 @@ func (drm *DiscoveryResponsePacket) Decode(buf *bytes.Buffer) error {
 
 type ChallengePacket struct{}
 
-func (cm *ChallengePacket) Encode() (uint16, *bytes.Buffer, error) {
-	return ChallengePacketCode, nil, nil
+func (cm *ChallengePacket) TypeCode() uint16 {
+	return ChallengePacketCode
+}
+
+func (cm *ChallengePacket) Encode() (*bytes.Buffer, error) {
+	return nil, nil
 }
 
 type ChallengePacketResponse struct {
 	MacAddr string
+}
+
+func (cm *ChallengePacketResponse) TypeCode() uint16 {
+	return ChallengePacketResponseCode
 }
 
 func (chr *ChallengePacketResponse) Decode(header *PacketHeader, buf *bytes.Buffer) error {
@@ -152,7 +169,11 @@ type LoginPacket struct {
 	PID            uint32
 }
 
-func (lm *LoginPacket) Encode() (uint16, *bytes.Buffer, error) {
+func (lm *LoginPacket) TypeCode() uint16 {
+	return LoginPacketCode
+}
+
+func (lm *LoginPacket) Encode() (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
 	encoder := NewEncoder(buf)
@@ -160,19 +181,19 @@ func (lm *LoginPacket) Encode() (uint16, *bytes.Buffer, error) {
 	// Schema
 	err := encoder.WriteUint32(lm.Schema)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	// Connection type
 	err = encoder.WriteUint32(lm.ConnectionType)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	// Client name
 	err = encoder.WriteString(lm.ClientName)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	if len(lm.Password) == 0 {
@@ -182,7 +203,7 @@ func (lm *LoginPacket) Encode() (uint16, *bytes.Buffer, error) {
 
 		err = encoder.WriteString(string(emptyPass[:]))
 		if err != nil {
-			return 0, nil, err
+			return nil, err
 		}
 	} else {
 		// TODO: encrypt password
@@ -193,13 +214,17 @@ func (lm *LoginPacket) Encode() (uint16, *bytes.Buffer, error) {
 	// TODO: use our actual pid?
 	err = encoder.WriteUint32(lm.PID)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return LoginPacketCode, buf, nil
+	return buf, nil
 }
 
 type LoginResponsePacket struct{}
+
+func (lm *LoginResponsePacket) TypeCode() uint16 {
+	return LoginResponsePacketCode
+}
 
 func (lrm *LoginResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID == LoginFailedCode {
@@ -218,12 +243,20 @@ func (lrm *LoginResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) 
 
 type VersionPacket struct{}
 
-func (vm *VersionPacket) Encode() (uint16, *bytes.Buffer, error) {
-	return VersionPacketCode, nil, nil
+func (vp *VersionPacket) TypeCode() uint16 {
+	return VersionPacketCode
+}
+
+func (vm *VersionPacket) Encode() (*bytes.Buffer, error) {
+	return nil, nil
 }
 
 type VersionResponsePacket struct {
 	Version string
+}
+
+func (vrp *VersionResponsePacket) TypeCode() uint16 {
+	return VersionResponsePacketCode
 }
 
 func (vm *VersionResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
@@ -284,7 +317,11 @@ type ControllerConfigurationPacket struct {
 	UnknownField2 uint32
 }
 
-func (cm *ControllerConfigurationPacket) Encode() (uint16, *bytes.Buffer, error) {
+func (ccp *ControllerConfigurationPacket) TypeCode() uint16 {
+	return ControllerConfigurationPacketCode
+}
+
+func (cm *ControllerConfigurationPacket) Encode() (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
 	encoder := NewEncoder(buf)
@@ -292,15 +329,15 @@ func (cm *ControllerConfigurationPacket) Encode() (uint16, *bytes.Buffer, error)
 	// TODO: no idea what these are or what they're for
 	err := encoder.WriteUint32(cm.UnknownField1)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	err = encoder.WriteUint32(cm.UnknownField2)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return ControllerConfigurationPacketCode, buf, nil
+	return buf, nil
 }
 
 type SetPoint struct {
@@ -351,6 +388,10 @@ type Color struct {
 
 type Pump struct {
 	Data uint8
+}
+
+func (ccrp *ControllerConfigurationResponsePacket) TypeCode() uint16 {
+	return ControllerConfigurationResponsePacketCode
 }
 
 func (vm *ControllerConfigurationResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
@@ -554,7 +595,11 @@ type PoolStatusPacket struct {
 	UnknownField uint32
 }
 
-func (psp *PoolStatusPacket) Encode() (uint16, *bytes.Buffer, error) {
+func (psp *PoolStatusPacket) TypeCode() uint16 {
+	return PoolStatusPacketCode
+}
+
+func (psp *PoolStatusPacket) Encode() (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
 	encoder := NewEncoder(buf)
@@ -562,10 +607,10 @@ func (psp *PoolStatusPacket) Encode() (uint16, *bytes.Buffer, error) {
 	// TODO: no idea what this is or what it's for
 	err := encoder.WriteUint32(psp.UnknownField)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return PoolStatusPacketCode, buf, nil
+	return buf, nil
 }
 
 type PoolStatusResponsePacket struct {
@@ -606,6 +651,10 @@ type PoolCircuit struct {
 	ColorPosition uint8
 	ColorStagger  uint8
 	Delay         uint8
+}
+
+func (psrp *PoolStatusResponsePacket) TypeCode() uint16 {
+	return PoolStatusResponsePacketCode
 }
 
 func (psrp *PoolStatusResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
@@ -806,30 +855,38 @@ type SetHeatPointPacket struct {
 	Temperature   uint32
 }
 
-func (shp *SetHeatPointPacket) Encode() (uint16, *bytes.Buffer, error) {
+func (shpp *SetHeatPointPacket) TypeCode() uint16 {
+	return SetHeatPointPacketCode
+}
+
+func (shp *SetHeatPointPacket) Encode() (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
 	encoder := NewEncoder(buf)
 
 	err := encoder.WriteUint32(shp.ControllerIdx)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	err = encoder.WriteUint32(shp.BodyType)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	err = encoder.WriteUint32(shp.Temperature)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return SetHeatPointPacketCode, buf, nil
+	return buf, nil
 }
 
 type SetHeatPointResponsePacket struct{}
+
+func (shprp *SetHeatPointResponsePacket) TypeCode() uint16 {
+	return SetHeatPointResponsePacketCode
+}
 
 func (shpr *SetHeatPointResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != SetHeatPointResponsePacketCode {
@@ -847,30 +904,38 @@ type SetHeatModePacket struct {
 	Mode          uint32
 }
 
-func (shm *SetHeatModePacket) Encode() (uint16, *bytes.Buffer, error) {
+func (shmp *SetHeatModePacket) TypeCode() uint16 {
+	return SetHeatModePacketCode
+}
+
+func (shm *SetHeatModePacket) Encode() (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 
 	encoder := NewEncoder(buf)
 
 	err := encoder.WriteUint32(shm.ControllerIdx)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	err = encoder.WriteUint32(shm.BodyType)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	err = encoder.WriteUint32(shm.Mode)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
-	return SetHeatModePacketCode, buf, nil
+	return buf, nil
 }
 
 type SetHeatModeResponsePacket struct{}
+
+func (shmrp *SetHeatModeResponsePacket) TypeCode() uint16 {
+	return SetHeatModeResponsePacketCode
+}
 
 func (shmr *SetHeatModeResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
 	if header.TypeID != SetHeatModeResponsePacketCode {
