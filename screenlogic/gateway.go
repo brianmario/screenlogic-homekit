@@ -11,6 +11,7 @@ import (
 type Gateway struct {
 	client         net.Conn
 	packetSequence uint16
+	clientName     string
 	packetReader   *protocol.PacketReader
 	packetWriter   *protocol.PacketWriter
 
@@ -129,6 +130,8 @@ func (g *Gateway) Login(clientName string) error {
 		return err
 	}
 
+	g.clientName = clientName
+
 	return nil
 }
 
@@ -240,6 +243,22 @@ func (g *Gateway) SetHeatMode(controllerIdx uint32, bodyType BodyOfWater, mode H
 	var resp protocol.SetHeatModeResponsePacket
 
 	err = g.packetReader.ReadPacket(&resp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *Gateway) Reconnect() error {
+	// OpError
+
+	err := g.Connect()
+	if err != nil {
+		return err
+	}
+
+	err = g.Login(g.clientName)
 	if err != nil {
 		return err
 	}
