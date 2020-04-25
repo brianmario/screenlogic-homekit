@@ -1,64 +1,80 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"strings"
 
-	"github.com/brianmario/screenlogic-homekit/screenlogic"
+	"github.com/brutella/hc"
+	"github.com/brutella/hc/accessory"
+	"github.com/brutella/hc/log"
 )
 
+var pinCode string
+
+const pinCodeDefault = "00102003"
+
 func main() {
-	gateway, err := screenlogic.DiscoverGateway()
+	// Enable debug logging in github.com/brutella/hc as well as in this codebase.
+	//
+	// log.Debug.Enable()
+
+	flag.StringVar(&pinCode, "pin", pinCodeDefault, "homekit pin code to use for this accessory")
+
+	flag.Parse()
+
+	client, err := NewConnectedClient("screenlogic-homekit")
 	if err != nil {
-		log.Fatal(err)
+		log.Debug.Fatal(err)
 	}
 
-	err = gateway.Connect()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer gateway.Close()
-
-	clientName := "screenlogic-homekit"
-
-	err = gateway.Login(clientName)
-	if err != nil {
-		log.Fatal(err)
+	airTempInfo := accessory.Info{
+		Manufacturer: "Pentair",
+		Model:        "ScreenLogic",
+		Name:         "Ambient Air Temperature",
 	}
 
-	_, err = gateway.Version()
+	currentAirTemp, err := client.GetAirTemperature()
 	if err != nil {
-		log.Fatal(err)
+		log.Debug.Fatal(err)
 	}
 
-	_, err = gateway.ControllerConfig()
+	airTemp := accessory.NewTemperatureSensor(airTempInfo, currentAirTemp, -40, 150, 0.25)
+
+	pool := NewPoolAccessory(client)
+
+	spa := NewSpaAccessory(client)
+
+	pwConfig := hc.Config{Pin: pinCode}
+
+	gatewayName := client.GetGatewayName()
+
+	// Make the name safe for HomeKit by removing the space and the ':' char.
+	// Also call it ScreenLogic instead of the more generic Pentair name.
+	gatewayName = strings.Replace(gatewayName, "Pentair: ", "ScreenLogic-", 1)
+
+	gatewayVersion, err := client.GetGatewayVersion()
 	if err != nil {
-		log.Fatal(err)
+		log.Debug.Fatal(err)
 	}
 
-	_, err = gateway.PoolStatus()
-	if err != nil {
-		log.Fatal(err)
+	bridgeInfo := accessory.Info{
+		Manufacturer:     "Pentair",
+		Model:            "ScreenLogic",
+		Name:             gatewayName,
+		FirmwareRevision: gatewayVersion,
 	}
 
-	// I only have one pool controller.
-	// I'm not sure where a list of them is returned, or where you'd get the
-	// index of a controller, but I can assume 0 here.
-	var controllerIdx uint32 = 0
+	bridge := accessory.NewBridge(bridgeInfo)
 
-	// This will eventually come from HomeKit
-	var setTemp uint32 = 80
-
-	poolID := screenlogic.Pool
-
-	err = gateway.SetTemperature(controllerIdx, poolID, setTemp)
+	// NOTE: the first accessory in the list acts as the bridge, while the rest will be linked to it
+	t, err := hc.NewIPTransport(pwConfig, bridge.Accessory, airTemp.Accessory, pool.Accessory, spa.Accessory)
 	if err != nil {
-		log.Fatal(err)
+		log.Debug.Panic(err)
 	}
 
-	heatMode := screenlogic.HeatModeOff
+	hc.OnTermination(func() {
+		<-t.Stop()
+	})
 
-	err = gateway.SetHeatMode(controllerIdx, poolID, heatMode)
-	if err != nil {
-		log.Fatal(err)
-	}
+	t.Start()
 }
