@@ -22,12 +22,6 @@ type PacketHeader struct {
 	Len      uint32
 }
 
-type Packet struct {
-	PacketHeader
-
-	Data *bytes.Buffer
-}
-
 func (pp *PacketReader) ReadPacket(p ReadablePacket) error {
 	header := new(PacketHeader)
 
