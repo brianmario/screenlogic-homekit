@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/brianmario/screenlogic-homekit/screenlogic/protocol"
+	"github.com/brutella/hc/log"
 )
 
 type Gateway struct {
@@ -71,6 +72,13 @@ func DiscoverGateway() (*Gateway, error) {
 	}, nil
 }
 
+func (g *Gateway) handleOOBPacket(header *protocol.PacketHeader, data *bytes.Buffer) error {
+	// For now let's just log the type we saw and let the reader continue.
+	log.Debug.Printf("OOB packet with type code %v\n - ignoring", header.TypeID)
+
+	return nil
+}
+
 func (g *Gateway) Connect() error {
 	var err error
 
@@ -80,7 +88,7 @@ func (g *Gateway) Connect() error {
 	}
 
 	// Setup packet processing
-	g.packetReader = protocol.NewPacketReader(g.client)
+	g.packetReader = protocol.NewPacketReader(g.client, g.handleOOBPacket)
 	g.packetWriter = protocol.NewPacketWriter(g.client, 2)
 
 	// Again, this packet doesn't follow the packet framing spec, so we'll just write

@@ -6,13 +6,17 @@ import (
 	"io"
 )
 
+type OOBPacketFn func(header *PacketHeader, data *bytes.Buffer) error
+
 type PacketReader struct {
-	r io.Reader
+	r        io.Reader
+	callback OOBPacketFn
 }
 
-func NewPacketReader(r io.Reader) *PacketReader {
+func NewPacketReader(r io.Reader, oobFn OOBPacketFn) *PacketReader {
 	return &PacketReader{
-		r: r,
+		r:        r,
+		callback: oobFn,
 	}
 }
 
@@ -49,14 +53,20 @@ readAgain:
 		expectedTypeCode := p.TypeCode()
 
 		if header.TypeID != expectedTypeCode {
-			// TODO: deal with whatever this packet type we were sent??
-			//
 			// What I noticed is that there are some packets the gateway will send us even if
 			// we never asked for them. Out of order of the regular request/response cycle.
 			// One such packet is the WeatherForcastChanged packet.
-			//
-			// So for now, since the caller was most likely expecting a different packet here
-			// it's probably next in line off the socket buffer, so let's read that now, shall we?
+			// We'll hand these packets over to the caller so they can decide what to do with them.
+			// If this callback returns an error, we stop reading packets here and return that error.
+			if pp.callback != nil {
+				err = pp.callback(header, dataBuf)
+				if err != nil {
+					return err
+				}
+			}
+
+			// As for the packet the caller was most likely expecting here, it's probably next in
+			// line off the socket buffer. So let's read that now, shall we?
 			goto readAgain
 		}
 
