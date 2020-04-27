@@ -74,7 +74,7 @@ func DiscoverGateway() (*Gateway, error) {
 
 func (g *Gateway) handleOOBPacket(header *protocol.PacketHeader, data *bytes.Buffer) error {
 	// For now let's just log the type we saw and let the reader continue.
-	log.Info.Printf("OOB packet with type code %v\n - ignoring", header.TypeID)
+	log.Info.Printf("OOB packet with type code %v - ignoring\n", header.TypeID)
 
 	return nil
 }
