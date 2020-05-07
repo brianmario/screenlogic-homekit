@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -269,7 +270,7 @@ retry:
 	if err != nil {
 		_, ok := err.(net.Error)
 
-		if ok && retriesLeft > 0 {
+		if (ok || err == io.EOF) && retriesLeft > 0 {
 			retriesLeft--
 
 			// connection most likely dropped, let's reconnect
@@ -310,7 +311,7 @@ retry:
 	if err != nil {
 		_, ok := err.(net.Error)
 
-		if ok && retriesLeft > 0 {
+		if (ok || err == io.EOF) && retriesLeft > 0 {
 			retriesLeft--
 
 			// connection most likely dropped, let's reconnect
