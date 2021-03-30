@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"time"
 )
 
 type Decoder struct {
@@ -90,6 +91,52 @@ func (d *Decoder) ReadString() (string, error) {
 
 	// Only return the part of the buffer we care about, leaving the padded bytes off the end.
 	return string(buf[:len]), nil
+}
+
+func (d *Decoder) ReadDateTime() (time.Time, error) {
+	year, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	month, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// weekday, not used
+	_, err = d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	day, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	hour, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	minute, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	second, err := d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// millisecond, but who cares
+	_, err = d.ReadUint16()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Date(int(year), time.Month(month), int(day), int(hour), int(minute), int(second), 0, time.Local), nil
 }
 
 func (d *Decoder) CopyBytes(data []byte) error {

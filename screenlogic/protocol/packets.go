@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"time"
 )
 
 const (
@@ -17,12 +18,15 @@ const (
 	VersionPacketCode                                = 8120
 	VersionResponsePacketCode                        = VersionPacketCode + 1
 	WeatherForcastChangedCode                        = 9806
+	HistoryDataResponsePacketCode                    = 12502
 	ControllerConfigurationPacketCode                = 12532
 	ControllerConfigurationResponsePacketCode        = ControllerConfigurationPacketCode + 1
 	PoolStatusPacketCode                             = 12526
 	PoolStatusResponsePacketCode                     = PoolStatusPacketCode + 1
 	SetHeatPointPacketCode                           = 12528
 	SetHeatPointResponsePacketCode                   = SetHeatPointPacketCode + 1
+	HistoryPacketCode                                = 12534
+	HistoryPacketResponseCode                        = HistoryPacketCode + 1
 	SetHeatModePacketCode                            = 12538
 	SetHeatModeResponsePacketCode                    = SetHeatModePacketCode + 1
 )
@@ -943,6 +947,287 @@ func (shmr *SetHeatModeResponsePacket) Decode(header *PacketHeader, buf *bytes.B
 	}
 
 	// this presumably has no fields?
+
+	return nil
+}
+
+type HistoryPacket struct {
+	ControllerIndex uint32 // use 0
+	Start           time.Time
+	End             time.Time
+	SenderID        uint32 // not used, use 0
+}
+
+func (hp *HistoryPacket) TypeCode() uint16 {
+	return HistoryPacketCode
+}
+
+func (hp *HistoryPacket) Encode() (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+
+	encoder := NewEncoder(buf)
+
+	err := encoder.WriteUint32(hp.ControllerIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	err = encoder.WriteDateTime(hp.Start)
+	if err != nil {
+		return nil, err
+	}
+
+	err = encoder.WriteDateTime(hp.End)
+	if err != nil {
+		return nil, err
+	}
+
+	err = encoder.WriteUint32(hp.SenderID)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+type HistoryResponsePacket struct{}
+
+func (hrp *HistoryResponsePacket) TypeCode() uint16 {
+	return HistoryPacketResponseCode
+}
+
+func (hrp *HistoryResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
+	if header.TypeID != HistoryPacketResponseCode {
+		return MalformedPacketErr
+	}
+
+	// this presumably has no fields?
+
+	return nil
+}
+
+type HistoryEvent struct {
+	Timestamp time.Time
+	Temp      uint32
+}
+
+type HistoryDataResponsePacket struct {
+	OutsideTemps   []HistoryEvent
+	PoolWaterTemps []HistoryEvent
+}
+
+func (hrp *HistoryDataResponsePacket) TypeCode() uint16 {
+	return HistoryDataResponsePacketCode
+}
+
+func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Buffer) error {
+	if header.TypeID != HistoryDataResponsePacketCode {
+		return MalformedPacketErr
+	}
+
+	decoder := NewDecoder(buf)
+
+	// outside temp?
+	numEvents, err := decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	hrp.OutsideTemps = make([]HistoryEvent, numEvents)
+
+	for i := uint32(0); i < numEvents; i++ {
+		event := &hrp.OutsideTemps[i]
+
+		event.Timestamp, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		event.Temp, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// outside temp?
+
+	// pool water temp?
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	hrp.PoolWaterTemps = make([]HistoryEvent, numEvents)
+
+	for i := uint32(0); i < numEvents; i++ {
+		event := &hrp.PoolWaterTemps[i]
+
+		event.Timestamp, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		event.Temp, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// pool water temp?
+
+	// no idea, last hot tub temp?
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// no idea, last hot tub temp?
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
+
+	// timestamps only, maybe some sort of state change record?
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+	}
+	// timestamps only, maybe some sort of state change record?
+
+	// there appear to be the same number of timestamps from the previous numEvents field
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+	}
+	// there appear to be the same number of timestamps from the previous numEvents field
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
+
+	// not sure, seems to be 0 length
+	numEvents, err = decoder.ReadUint32()
+	if err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < numEvents; i++ {
+		_, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		_, err = decoder.ReadUint32()
+		if err != nil {
+			return err
+		}
+	}
+	// not sure, seems to be 0 length
 
 	return nil
 }

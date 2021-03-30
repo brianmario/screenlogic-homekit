@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/brianmario/screenlogic-homekit/screenlogic/protocol"
 	"github.com/brutella/hc/log"
@@ -256,6 +257,35 @@ func (g *Gateway) SetHeatMode(controllerIdx uint32, bodyType BodyOfWater, mode H
 	}
 
 	return nil
+}
+
+func (g *Gateway) History(start, end time.Time) (*protocol.HistoryDataResponsePacket, error) {
+	var req protocol.HistoryPacket
+	req.ControllerIndex = 0
+	req.Start = start
+	req.End = end
+	req.SenderID = 0
+
+	err := g.packetWriter.WritePacket(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	var historyResp protocol.HistoryResponsePacket
+
+	err = g.packetReader.ReadPacket(&historyResp)
+	if err != nil {
+		return nil, err
+	}
+
+	dataResp := &protocol.HistoryDataResponsePacket{}
+
+	err = g.packetReader.ReadPacket(dataResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return dataResp, nil
 }
 
 func (g *Gateway) Reconnect() error {

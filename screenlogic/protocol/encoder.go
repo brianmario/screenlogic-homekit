@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"time"
 )
 
 type Encoder struct {
@@ -76,4 +77,46 @@ func (e *Encoder) WriteBytes(data []byte) error {
 	}
 
 	return nil
+}
+
+func (e *Encoder) WriteDateTime(t time.Time) error {
+	err := e.WriteUint16(uint16(t.Year()))
+	if err != nil {
+		return err
+	}
+
+	err = e.WriteUint16(uint16(t.Month()))
+	if err != nil {
+		return err
+	}
+
+	// Day of the week, can be 0.
+	// Could use t.Weekday() if need-be.
+	err = e.WriteUint16(uint16(0))
+	if err != nil {
+		return err
+	}
+
+	err = e.WriteUint16(uint16(t.Day()))
+	if err != nil {
+		return err
+	}
+
+	err = e.WriteUint16(uint16(t.Hour()))
+	if err != nil {
+		return err
+	}
+
+	err = e.WriteUint16(uint16(t.Minute()))
+	if err != nil {
+		return err
+	}
+
+	err = e.WriteUint16(uint16(t.Second()))
+	if err != nil {
+		return err
+	}
+
+	// last field is millisecond
+	return e.WriteUint16(0)
 }
