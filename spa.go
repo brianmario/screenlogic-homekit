@@ -59,7 +59,7 @@ func NewSpaAccessory(client *Client) *SpaAccessory {
 
 	spa.heater.HeaterCooler.TargetHeaterCoolerState.OnValueRemoteGet(spa.client.GetSpaTargetHeatingState)
 
-	currentTemp := client.GetCurrentPoolTemp()
+	currentTemp := client.GetCurrentSpaTemp()
 
 	spa.heater.HeaterCooler.CurrentTemperature.SetValue(currentTemp)
 	spa.heater.HeaterCooler.CurrentTemperature.OnValueRemoteGet(spa.client.GetCurrentSpaTemp)
