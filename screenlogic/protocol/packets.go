@@ -1012,8 +1012,9 @@ type HistoryEvent struct {
 }
 
 type HistoryDataResponsePacket struct {
-	OutsideTemps   []HistoryEvent
-	PoolWaterTemps []HistoryEvent
+	OutsideTemps     []HistoryEvent
+	PoolWaterTemps   []HistoryEvent
+	HotTubWaterTemps []HistoryEvent
 }
 
 func (hrp *HistoryDataResponsePacket) TypeCode() uint16 {
@@ -1073,7 +1074,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	}
 	// pool water temp?
 
-	// no idea, last hot tub temp?
+	// no idea
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
@@ -1090,26 +1091,30 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 			return err
 		}
 	}
-	// no idea, last hot tub temp?
+	// no idea
 
-	// not sure, seems to be 0 length
+	// hot tub temps
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.HotTubWaterTemps = make([]HistoryEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		event := &hrp.HotTubWaterTemps[i]
+
+		event.Timestamp, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 
-		_, err = decoder.ReadUint32()
+		event.Temp, err = decoder.ReadUint32()
 		if err != nil {
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// hot tub temps
 
 	// not sure, seems to be 0 length
 	numEvents, err = decoder.ReadUint32()
@@ -1152,6 +1157,9 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 		}
 	}
 	// there appear to be the same number of timestamps from the previous numEvents field
+
+	// Exit early here because something is wrong parsing below
+	return nil
 
 	// not sure, seems to be 0 length
 	numEvents, err = decoder.ReadUint32()
