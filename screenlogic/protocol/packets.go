@@ -1011,10 +1011,20 @@ type HistoryEvent struct {
 	Temp      uint32
 }
 
+type StartStopEvent struct {
+	Start time.Time
+	Stop  time.Time
+}
+
 type HistoryDataResponsePacket struct {
 	OutsideTemps     []HistoryEvent
 	PoolWaterTemps   []HistoryEvent
 	HotTubWaterTemps []HistoryEvent
+	PoolRuns         []StartStopEvent
+	HotTubRuns       []StartStopEvent
+	SolarRuns        []StartStopEvent
+	HeaterRuns       []StartStopEvent
+	LightRuns        []StartStopEvent
 }
 
 func (hrp *HistoryDataResponsePacket) TypeCode() uint16 {
@@ -1028,7 +1038,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 
 	decoder := NewDecoder(buf)
 
-	// outside temp?
+	// outside air temps
 	numEvents, err := decoder.ReadUint32()
 	if err != nil {
 		return err
@@ -1049,9 +1059,9 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 			return err
 		}
 	}
-	// outside temp?
+	// outside air temps
 
-	// pool water temp?
+	// pool water temps
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
@@ -1072,9 +1082,9 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 			return err
 		}
 	}
-	// pool water temp?
+	// pool water temps
 
-	// no idea
+	// pool set point temps
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
@@ -1091,7 +1101,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 			return err
 		}
 	}
-	// no idea
+	// pool set point temps
 
 	// hot tub temps
 	numEvents, err = decoder.ReadUint32()
@@ -1116,7 +1126,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	}
 	// hot tub temps
 
-	// not sure, seems to be 0 length
+	// hot tub set point temps
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
@@ -1133,109 +1143,122 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// hot tub set point temps
 
-	// timestamps only, maybe some sort of state change record?
+	// pool runs
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.PoolRuns = make([]StartStopEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		thisRun := &hrp.PoolRuns[i]
+
+		thisRun.Start, err = decoder.ReadDateTime()
+		if err != nil {
+			return err
+		}
+
+		thisRun.Stop, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 	}
-	// timestamps only, maybe some sort of state change record?
+	// pool runs
 
-	// there appear to be the same number of timestamps from the previous numEvents field
-	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
-		if err != nil {
-			return err
-		}
-	}
-	// there appear to be the same number of timestamps from the previous numEvents field
-
-	// Exit early here because something is wrong parsing below
-	return nil
-
-	// not sure, seems to be 0 length
+	// hot tub runs
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.HotTubRuns = make([]StartStopEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		thisRun := &hrp.PoolRuns[i]
+
+		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 
-		_, err = decoder.ReadUint32()
+		thisRun.Stop, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// hot tub runs
 
-	// not sure, seems to be 0 length
+	// solar runs
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.SolarRuns = make([]StartStopEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		thisRun := &hrp.PoolRuns[i]
+
+		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 
-		_, err = decoder.ReadUint32()
+		thisRun.Stop, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// solar runs
 
-	// not sure, seems to be 0 length
+	// heater runs
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.HeaterRuns = make([]StartStopEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		thisRun := &hrp.PoolRuns[i]
+
+		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 
-		_, err = decoder.ReadUint32()
+		thisRun.Stop, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// heater runs
 
-	// not sure, seems to be 0 length
+	// light runs
 	numEvents, err = decoder.ReadUint32()
 	if err != nil {
 		return err
 	}
 
+	hrp.LightRuns = make([]StartStopEvent, numEvents)
+
 	for i := uint32(0); i < numEvents; i++ {
-		_, err = decoder.ReadDateTime()
+		thisRun := &hrp.PoolRuns[i]
+
+		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 
-		_, err = decoder.ReadUint32()
+		thisRun.Stop, err = decoder.ReadDateTime()
 		if err != nil {
 			return err
 		}
 	}
-	// not sure, seems to be 0 length
+	// light runs
 
 	return nil
 }
