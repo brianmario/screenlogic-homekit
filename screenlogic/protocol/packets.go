@@ -1177,7 +1177,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	hrp.HotTubRuns = make([]StartStopEvent, numEvents)
 
 	for i := uint32(0); i < numEvents; i++ {
-		thisRun := &hrp.PoolRuns[i]
+		thisRun := &hrp.HotTubRuns[i]
 
 		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
@@ -1200,7 +1200,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	hrp.SolarRuns = make([]StartStopEvent, numEvents)
 
 	for i := uint32(0); i < numEvents; i++ {
-		thisRun := &hrp.PoolRuns[i]
+		thisRun := &hrp.SolarRuns[i]
 
 		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
@@ -1223,7 +1223,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	hrp.HeaterRuns = make([]StartStopEvent, numEvents)
 
 	for i := uint32(0); i < numEvents; i++ {
-		thisRun := &hrp.PoolRuns[i]
+		thisRun := &hrp.HeaterRuns[i]
 
 		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
@@ -1246,7 +1246,7 @@ func (hrp *HistoryDataResponsePacket) Decode(header *PacketHeader, buf *bytes.Bu
 	hrp.LightRuns = make([]StartStopEvent, numEvents)
 
 	for i := uint32(0); i < numEvents; i++ {
-		thisRun := &hrp.PoolRuns[i]
+		thisRun := &hrp.LightRuns[i]
 
 		thisRun.Start, err = decoder.ReadDateTime()
 		if err != nil {
